@@ -1,2 +1,0 @@
-# Tefal
-Minuteur friteuse
