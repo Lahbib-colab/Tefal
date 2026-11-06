@@ -400,7 +400,7 @@ img,svg{-webkit-user-drag:none;user-drag:none}
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={g(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},s(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
-let PF=Object.assign({sound:true,vol:.6,vib:true,wake:true,bg:true},LS.g('ole_prefs',{}));
+let PF=Object.assign({sound:true,vol:.6,vib:true,wake:true,bg:true,ts:'auto'},LS.g('ole_prefs',{}));
 const savePF=()=>LS.s('ole_prefs',PF);
 const num=n=>String(n).replace('.',',');
 const p2=n=>String(n).padStart(2,'0');
@@ -460,7 +460,7 @@ function polar(a,r){const q=a*Math.PI/180;return[100+r*Math.sin(q),100-r*Math.co
 function arcP(a0,a1,r){const[x0,y0]=polar(a0,r),[x1,y1]=polar(a1,r);return`M${x0.toFixed(1)} ${y0.toFixed(1)}A${r} ${r} 0 ${a1-a0>180?1:0} 1 ${x1.toFixed(1)} ${y1.toFixed(1)}`}
 const GRAD=(id,lc)=>`<defs><radialGradient id="${id}g" cx=".35" cy=".28" r=".95"><stop offset="0" stop-color="#5a5d63"/><stop offset=".55" stop-color="#1c1e22"/><stop offset="1" stop-color="#0a0b0d"/></radialGradient><radialGradient id="${id}l"><stop offset="0" stop-color="${lc}" stop-opacity=".75"/><stop offset="1" stop-color="${lc}" stop-opacity="0"/></radialGradient></defs>`;
 const lens=(id,o)=>`<g ${o.gid?`id="${o.gid}"`:''} class="${o.cls}" ${o.to!=null?`data-to="${o.to}"`:''} style="transform:rotate(${o.from}deg)"><circle cx="100" cy="100" r="46" fill="url(#${id}g)" stroke="rgba(255,255,255,.18)" stroke-width="1.5"/><circle cx="100" cy="100" r="35" fill="rgba(8,9,11,.62)" stroke="rgba(255,255,255,.07)" stroke-width="1.5"/><rect x="98.200" y="50" width="3.600" height="11" rx="1.800" fill="#FF9F0A" style="filter:drop-shadow(0 0 3px rgba(255,159,10,.85))"/></g><path d="M63 77A43 43 0 0 1 95 57" stroke="rgba(255,255,255,.34)" stroke-width="2" fill="none" stroke-linecap="round"/>`;
-const ledSvg=(id,on,blink,col)=>`<circle cx="22" cy="22" r="14" fill="url(#${id}l)" class="ledg ${on&&blink?'on':''}" opacity="${on?1:0}"/><circle cx="22" cy="22" r="6.500" class="led ${on&&blink?'on':''}" fill="${on?col:'#26302b'}"/>`;
+const ledSvg=(id,on,blink,col)=>`<circle cx="22" cy="22" r="14" fill="url(#${id}l)" class="ledg ${on&&blink?'on':''}" opacity="${on?1:0}"/><circle cx="22" cy="22" r="6.500" class="led ${on&&blink?'on':''}" fill="${on?col:'#2c2f34'}"/>`;
 const f1=n=>n.toFixed(1);
 function knob(t,heat,animate,o){
   o=o||{};
@@ -593,6 +593,7 @@ function applyDisplay(){
 function applyDT(){
   let k=1;
   try{if(CSS.supports('font','-apple-system-body')){const p=document.createElement('span');p.style.cssText='font:-apple-system-body;position:absolute;visibility:hidden';p.textContent='A';document.body.appendChild(p);k=parseFloat(getComputedStyle(p).fontSize)/17;p.remove()}}catch(e){}
+  if(PF.ts&&PF.ts!=='auto')k=+PF.ts;
   k=Math.max(.92,Math.min(1.22,k||1));
   document.documentElement.style.setProperty('--dt',k.toFixed(3));
 }
@@ -876,10 +877,10 @@ function prepSheet(){
   const {it}=S.P;
   return `<div class="sbar"><button class="ib" data-act="back" aria-label="Retour">${ui('back',20)}</button><div class="st">Cuisson</div><button class="ib fvb ${(D.fav||[]).includes(it.id)?'on':''}" data-act="fav" data-v="${it.id}" aria-label="Favori">${ui('star',20)}</button></div>
   <div class="sbody"><div class="phead" style="--c:${it.c}"><div class="ico${it.img?' ph':''}">${pic(it,40)}</div><div><h1>${esc(it.name)}</h1><p class="sub">${TAGS[it.tag]} · capacité max ${gfmt(maxOf(it))}${it.est?' · <em class="est">valeurs estimées, à vérifier</em>':''}${D.sets&&D.sets[it.id]?' · <em class="perso">réglage perso</em>':''}${it.w&&it.w!==1?' · huile ×'+num(it.w):''}</p></div></div>
-   <div class="grp qty"><div class="stepr"><button class="rbtn" data-act="qm" aria-label="Moins 50 grammes">${ui('minus',20)}</button><div><div class="big" id="qv"></div><div class="cap" id="pt"></div></div><button class="rbtn" data-act="qp" aria-label="Plus 50 grammes">${ui('plus',20)}</button></div>
+   <div class="grp qty"><div class="stepr"><button class="rbtn" data-act="qm" aria-label="Moins 50 grammes">${ui('minus',20)}</button><div><div class="big" id="qv"></div></div><button class="rbtn" data-act="qp" aria-label="Plus 50 grammes">${ui('plus',20)}</button></div>
     <input type="range" id="qr" min="50" max="1500" step="50" aria-label="Quantité en grammes">
     <div class="pre" id="qc"></div>
-    <div class="lr" style="padding:12px 0 0;margin-top:12px;border-top:.5px solid var(--sep)"><span>Pour</span><div class="stp"><button data-act="ppm" aria-label="Une personne de moins">${ui('minus',18)}</button><span id="ppn"></span><button data-act="ppp" aria-label="Une personne de plus">${ui('plus',18)}</button></div></div></div>
+    <div class="lr" style="padding:12px 0 0;margin-top:12px;border-top:.5px solid var(--sep)"><div><span>Pour</span><small id="pps"></small></div><div class="stp"><button data-act="ppm" aria-label="Une personne de moins">${ui('minus',18)}</button><span id="ppn"></span><button data-act="ppp" aria-label="Une personne de plus">${ui('plus',18)}</button></div></div></div>
    <div id="dyn"></div>
    ${it.note?`<p class="tip"><b>Astuce</b> · ${esc(it.note)}</p>`:''}
    <div class="grp" style="margin-top:16px"><button class="lr act" data-act="savedef">Enregistrer comme réglage par défaut</button>${D.sets&&D.sets[it.id]?`<button class="lr act red" data-act="clrdef">Rétablir les valeurs recommandées</button>`:''}${it.custom?`<button class="lr act" data-act="editdish">Modifier ce plat</button>`:''}<button class="lr act" data-act="sharedish">Partager ce plat</button></div>
@@ -892,8 +893,8 @@ function prepDyn(){
   if(over)h+=`<div class="warn" role="alert"><b>Quantité trop élevée</b><span>La capacité maximale est de ${gfmt(mx)}. Au-delà, l’huile risque de déborder et la cuisson sera irrégulière.</span><button class="sec sm" data-act="clamp">Ramener à ${gfmt(mx)}</button></div>`;
   else if(qty>=mx*.9)h+=`<div class="info">Vous approchez de la capacité maximale (${gfmt(mx)}).</div>`;
   if(it.stages.length>1)h+=`<div class="seg" style="margin:18px 0 0">${it.stages.map((s,k)=>`<button class="${k===i?'on':''}" data-act="pstage" data-v="${k}">${s.l}</button>`).join('')}</div>`;
-  h+=`<div class="dial big drag">${adjKnob(c)}</div><p class="sub" id="rec" style="text-align:center;margin:10px 0 14px">${recHtml(c)}</p>${adjCtl(c)}
-   <p class="note" style="text-align:center">Tournez la molette pour régler la température. Le temps est estimé selon la quantité.</p>`;
+  h+=`<div style="margin-top:16px">${adjCtl(c)}</div><div class="dial big drag">${adjKnob(c)}</div><p class="sub" id="rec" style="text-align:center;margin:10px 0 8px">${recHtml(c)}</p>
+   <p class="note" style="text-align:center;margin-top:8px">Tournez la molette pour régler la température. Le temps est estimé selon la quantité.</p>`;
   return h;
 }
 function prepFoot(){
@@ -904,7 +905,7 @@ function prepFoot(){
 function prepUpdate(){
   const {it,qty}=S.P,mx=maxOf(it);
   $('#qv').innerHTML=gfmt(qty).replace(/ (g|kg)$/,'<small>$1</small>');
-  $('#pt').textContent='≈ '+num(Math.round(qty/it.portion*10)/10)+' portion'+(qty/it.portion>=2?'s':'')+' de '+it.portion+' g';
+  $('#pps').textContent=it.portion+' g par personne';
   const r=$('#qr');if(r){if(+r.value!==qty)r.value=qty;r.style.setProperty('--p',((qty-50)/1450*100).toFixed(1)+'%')}
   const np=Math.max(1,Math.round(qty/it.portion));$('#ppn').textContent=np+(np>1?' pers.':' pers.');
   $('#qc').innerHTML=[250,500,750,mx].map(v=>`<button class="${qty===v?'on':''}" data-act="qset" data-v="${v}">${v===mx?'Max':gfmt(v)}</button>`).join('');
@@ -1176,7 +1177,7 @@ function deleteDish(){
   renderMain();toast('Plat supprimé.');
 }
 /* ---------- Réglages : préférences, historique, sauvegarde ---------- */
-const VER='14';
+const VER='16';
 const THEMES=[['auto','Auto','linear-gradient(90deg,#F2F2F7 50%,#000 50%)','#8a8a90','#c9c9d0'],['light','Clair','#F2F2F7','#2a2a30','#FFFFFF'],['sand','Sable','#F6F1E7','#4a3d28','#FFFDF8'],['graphite','Graphite','#16181D','#c8cdd8','#2B2F37'],['dark','Sombre','#000000','#cfcfd4','#1C1C1E']];
 const ACCENTS=[['green','Émeraude','#30D158'],['blue','Océan','#4DA3FF'],['purple','Violet','#BF5AF2'],['pink','Rose','#FF4F7B'],['teal','Turquoise','#40C8E0']];
 function logCook(){
@@ -1190,7 +1191,7 @@ function viewSettings(){
   const o=D.oil,h=D.hist||[],now=Date.now(),wk=h.filter(x=>now-x.ts<7*864e5).length;
   const sw=(k,label,sub)=>`<div class="lr"><div><span>${label}</span>${sub?`<small>${sub}</small>`:''}</div><button class="sw" role="switch" aria-checked="${!!PF[k]}" aria-label="${label}" data-act="tgl" data-v="${k}"></button></div>`;
   const np='Notification' in window?Notification.permission:'none';
-  const notif=np==='granted'?'<b>Activées</b>':np==='denied'?'<b>Refusées</b>':np==='none'?'<b>Indisponibles</b>':`<button class="lnk" data-act="notif">Activer</button>`;
+  const notif=np==='granted'?'<b>Activées</b>':np==='denied'?'<b>Refusées</b>':np==='none'?`<b>${standalone()?'Indisponibles':'Après installation'}</b>`:`<button class="lnk" data-act="notif">Activer</button>`;
   const hist=h.slice(0,8).map(x=>{const it=findItem(x.id);return `<div class="lr"><div style="display:flex;align-items:center;gap:12px"><span class="hi">${it?pic(it,22):''}</span><div><span>${esc(x.name)}</span><small>${esc(x.tag||'')}${x.tag?' · ':''}${x.temps.map(t=>t+' °C').join(' → ')} · ${fmt(x.secs.reduce((a,b)=>a+b,0))}${x.qty?' · '+gfmt(x.qty):''}${x.batch>1?' · fournée '+x.batch:''}</small></div></div><b>${dfmt(x.ts)}</b></div>`}).join('');
   return `<div class="wrap">${head('Réglages','Apparence, cuisson et données')}
    <h3 class="sh2">Apparence</h3>
@@ -1198,12 +1199,14 @@ function viewSettings(){
     <div class="lbl" style="margin:18px 0 10px">Couleur</div>
     <div class="acc">${ACCENTS.map(([id,n,c])=>`<button class="${accent===id?'on':''}" style="background:${c}" data-act="setAccent" data-v="${id}" aria-label="${n}"></button>`).join('')}</div>
     <div class="lbl" style="margin:18px 0 8px">Verre</div>
-    <div class="seg" style="margin:0">${[['clear','Clair'],['standard','Standard'],['tinted','Teinté']].map(([v,l])=>`<button class="${glass===v?'on':''}" data-act="setGlass" data-v="${v}">${l}</button>`).join('')}</div></div>
+    <div class="seg" style="margin:0">${[['clear','Clair'],['standard','Standard'],['tinted','Teinté']].map(([v,l])=>`<button class="${glass===v?'on':''}" data-act="setGlass" data-v="${v}">${l}</button>`).join('')}</div>
+    <div class="lbl" style="margin:18px 0 8px">Taille du texte</div>
+    <div class="seg" style="margin:0">${[['auto','Auto'],['0.92','Petit'],['1','Normal'],['1.12','Grand']].map(([v,l])=>`<button class="${String(PF.ts)===v?'on':''}" data-act="setTs" data-v="${v}">${l}</button>`).join('')}</div></div>
    <div class="grp" style="margin-top:12px">${sw('bg','Fond animé','Halos de couleur derrière l’interface')}</div>
    <h3 class="sh2">Cuisson</h3>
    <div class="grp">${sw('wake','Écran allumé','Pendant une cuisson')}${sw('sound','Son de fin','Un « ding » à la fin du minuteur')}
     ${PF.sound?`<div class="lr"><span>Volume</span><input type="range" id="vol" min="0" max="100" value="${Math.round(PF.vol*100)}" style="--p:${Math.round(PF.vol*100)}%;width:150px;margin:0"></div><button class="lr act" data-act="testsnd">Tester le son</button>`:''}
-    ${sw('vib','Retour tactile','Cadran et alertes, selon l’appareil')}
+    ${sw('vib','Retour tactile','Cadran et alertes, selon l’appareil')}${PF.vib?`<button class="lr act" data-act="testhap">Tester le retour tactile</button>`:''}
     <div class="lr"><span>Notifications</span>${notif}</div></div>
    <h3 class="sh2">Huile</h3>
    <div class="grp"><div class="lr"><span>Remplacer après</span><div class="stp"><button data-act="lm" aria-label="Moins">${ui('minus',18)}</button><span>${o.limit}</span><button data-act="lp" aria-label="Plus">${ui('plus',18)}</button></div></div>
@@ -1264,7 +1267,7 @@ document.addEventListener('pointerup',e=>{if(!ONS||e.pointerId!==ONS.id)return;c
 function diag(){
   const sup=(p,v)=>{try{return CSS.supports(p,v)}catch(e){return false}};
   const ua=navigator.userAgent,eng=/AppleWebKit/.test(ua)&&!/Chrome|Chromium|Edg/.test(ua)?'WebKit (Safari)':/Chrome|Chromium/.test(ua)?'Blink (Chrome)':/Firefox/.test(ua)?'Gecko':'Autre';
-  return [['Moteur',true,eng],['Verre dépoli',sup('backdrop-filter','blur(1px)')||sup('-webkit-backdrop-filter','blur(1px)')],['Couleurs dynamiques',sup('color','color-mix(in srgb,red,blue)')],['Fond animé fluide',typeof CSS!=='undefined'&&!!CSS.registerProperty],['Écran allumé','wakeLock' in navigator],['Notifications','Notification' in window],['Mode hors-ligne','serviceWorker' in navigator],['Installée',standalone()],['Retour tactile',true,navigator.vibrate?'vibration':'interrupteur iOS'],['Taille du texte',true,'×'+((getComputedStyle(document.documentElement).getPropertyValue('--dt')||'1').trim()||'1')]];
+  return [['Moteur',true,eng],['Verre dépoli',sup('backdrop-filter','blur(1px)')||sup('-webkit-backdrop-filter','blur(1px)')],['Couleurs dynamiques',sup('color','color-mix(in srgb,red,blue)')],['Fond animé fluide',typeof CSS!=='undefined'&&!!CSS.registerProperty],['Écran allumé','wakeLock' in navigator],['Notifications','Notification' in window],['Mode hors-ligne','serviceWorker' in navigator],['Installée',standalone()],['Retour tactile',true,navigator.vibrate?'vibration':'interrupteur iOS'],['Taille du texte',true,'×'+((getComputedStyle(document.documentElement).getPropertyValue('--dt')||'1').trim()||'1')+(PF.ts==='auto'?' (auto)':' (manuel)')]];
 }
 function showDiag(){
   const m=$('#modal');m.hidden=false;
@@ -1296,6 +1299,8 @@ document.addEventListener('click',e=>{
   case 'setTheme':theme=v;LS.s('ole_theme',theme);applyTheme();renderMain();break;
   case 'setGlass':glass=v;LS.s('ole_glass',glass);applyDisplay();renderMain();break;
   case 'install':doInstall();break;
+  case 'setTs':PF.ts=v;savePF();applyDT();renderMain();break;
+  case 'testhap':unlock();haptic();setTimeout(haptic,200);setTimeout(haptic,400);toast('Trois impulsions envoyées.');break;
   case 'sharedish':shareDish(P.it);break;
   case 'shok':addShared();break;
   case 'dm':D.oil.days=Math.max(14,D.oil.days-7);save();renderMain();break;
