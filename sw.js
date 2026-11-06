@@ -1,6 +1,6 @@
 /* Service worker : fonctionnement hors-ligne complet.
    Incrémentez VERSION à chaque mise à jour de l'application. */
-const VERSION = 'oleoclean-v22';
+const VERSION = 'oleoclean-v23';
 const FILES = [
   './', './index.html', './manifest.json',
   './icons/icon-192.png', './icons/icon-512.png', './icons/maskable-512.png',

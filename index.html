@@ -380,6 +380,56 @@ img,svg{-webkit-user-drag:none;user-drag:none}
 .bl{display:flex;justify-content:space-between;color:var(--mu);font-size:12px;margin:2px 0 8px}
 .kitb svg{fill:none;stroke:var(--tx);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .kitb.on{background:var(--gr)}.kitb.on svg{stroke:var(--ongr)}
+/* ---------- grands écrans et paysage ---------- */
+:root{padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
+#sheet{padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
+@media (min-width:700px){
+  .wrap{max-width:1040px}
+  .wrap:not(.g){column-count:2;column-gap:24px}
+  .wrap:not(.g)>.hd{column-span:all}
+  .wrap:not(.g)>*{break-inside:avoid}
+  .wrap:not(.g)>.sh2{break-after:avoid}
+  .wrap.g{display:grid;grid-template-columns:minmax(250px,330px) minmax(0,1fr);column-gap:24px;align-items:start}
+  .wrap.g>*{grid-column:1}
+  .wrap.g>#glist{grid-column:2;grid-row:1/span 9}
+  .wrap.g>.note{grid-column:2}
+  .wrap.g .rcn{margin:0;padding:0 0 4px}
+  .pre.scroll{margin:14px 0 20px;padding:0}
+  .sbody{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:22px;align-content:start;align-items:start}
+  .sbody>*{grid-column:2;min-height:min-content}
+  .sbody>.dial,.sbody>.ring{grid-column:1;grid-row:1/span 8;margin-top:0}
+  .sbody.prep{grid-template-rows:max-content max-content;grid-auto-rows:max-content}
+  .sbody.prep>.pl1{display:block;grid-area:1/1}
+  .sbody.prep>.pl2{display:block;grid-area:2/1}
+  .sbody.prep>#dyn{grid-area:1/2/3/3}
+  .dial.big{width:min(100%,360px,calc(100dvh - 150px));margin-left:auto;margin-right:auto}
+  .dial.lg{width:min(100%,290px,calc(100dvh - 130px))}
+}
+@media (orientation:landscape) and (max-height:520px){
+  .wrap{padding:6px 20px 24px 92px}
+  body.hm .wrap{padding-bottom:84px}
+  .hd{margin:0 0 12px}.hd h1{font-size:28px}
+  nav{left:calc(env(safe-area-inset-left,0px) + 10px);right:auto;top:50%;bottom:auto;transform:translateY(-50%);width:72px;max-width:none;margin:0;flex-direction:column;padding:6px;border-radius:30px}
+  nav button{padding:9px 0 7px}
+  .mini{left:calc(env(safe-area-inset-left,0px) + 96px);right:14px;bottom:10px;max-width:440px;margin:0}
+  #toast{left:calc(env(safe-area-inset-left,0px) + 96px);right:14px;bottom:10px;max-width:440px;margin:0}
+  #cbar{padding-left:84px}
+  #sheet{top:calc(env(safe-area-inset-top,0px) + 6px);border-radius:26px 26px 0 0}
+  .sbar{padding:16px 16px 2px}.sbar::before{top:5px}
+  .sbody{padding-bottom:26px}
+  .sbody h1{font-size:24px;margin:6px 0 2px}
+  .sfoot{margin-top:-26px;padding:30px 20px calc(8px + env(safe-area-inset-bottom,0px));gap:6px}
+  .go{height:46px;font-size:16px}.sec{min-height:42px}
+  .dial.big{width:min(100%,360px,calc(100dvh - 130px))}
+  .phead{margin:2px 0 12px}
+  #onb{padding-top:calc(env(safe-area-inset-top,0px) + 6px);padding-bottom:calc(env(safe-area-inset-bottom,0px) + 12px)}
+  #onb .dial{width:min(70vw,260px,calc(100dvh - 230px))!important}
+  .onbp img{width:72px;height:72px;border-radius:20px}.onbp img:nth-child(2){width:88px;height:88px}
+  .onbo{width:96px;height:96px;border-radius:30px}.onbo svg{width:64px;height:64px}
+  .onbt{margin-bottom:8px}.onbt h2{font-size:22px;margin-bottom:4px}.onbt p{font-size:14px}
+  .onbd{margin-bottom:8px}
+}
+.pl1,.pl2{display:contents}
 </style>
 </head>
 <body>
@@ -784,7 +834,7 @@ function guideHTML(){
 }
 function viewGuide(){
   const seen=new Set(),rec=[];(D.hist||[]).forEach((x,i)=>{if(!seen.has(x.id)&&rec.length<4&&findItem(x.id)){seen.add(x.id);rec.push([x,i])}});
-  return `<div class="wrap">${head('Friture','Guide Tefal Oleoclean',`<button class="ib" data-act="newdish" aria-label="Nouveau plat">${ui('plus',20)}</button>`)}
+  return `<div class="wrap g">${head('Friture','Guide Tefal Oleoclean',`<button class="ib" data-act="newdish" aria-label="Nouveau plat">${ui('plus',20)}</button>`)}
    ${rec.length?`<h3 class="sh2" style="margin-top:0">Reprendre</h3><div class="rcn">${rec.map(([x,i])=>{const it=findItem(x.id);return `<button class="rcc" data-act="reopen" data-v="${i}" style="--c:${it.c}"><div class="ico${it.img?' ph':''}">${pic(it,30)}</div><div><b>${esc(it.name)}</b><span>${x.temps[0]} °C · ${fmt(x.secs[0])}</span></div></button>`}).join('')}</div><div style="height:14px"></div>`:''}
    <div class="srch">${ui('search',18)}<input id="gq" type="search" placeholder="Rechercher un plat" autocomplete="off" aria-label="Rechercher un plat" value="${esc(S.q)}"><button class="srt" data-act="sort" aria-label="Changer le tri">${SORTS[S.sort]}</button></div>
    <div class="seg" role="group">${[['all','Tout'],['f','Frais'],['s','Surgelé'],['fav','Favoris']].map(([v,t])=>`<button class="${S.filter===v?'on':''}" data-act="filter" data-v="${v}">${t}</button>`).join('')}</div>
@@ -888,15 +938,15 @@ function openItem(id,ov){
 function prepSheet(){
   const {it}=S.P;
   return `<div class="sbar"><button class="ib" data-act="back" aria-label="Retour">${ui('back',20)}</button><div class="st">Cuisson</div><button class="ib fvb ${(D.fav||[]).includes(it.id)?'on':''}" data-act="fav" data-v="${it.id}" aria-label="Favori">${ui('star',20)}</button></div>
-  <div class="sbody"><div class="phead" style="--c:${it.c}"><div class="ico${it.img?' ph':''}">${pic(it,40)}</div><div><h1>${esc(it.name)}</h1><p class="sub">${TAGS[it.tag]} · capacité max ${gfmt(maxOf(it))}${it.est?' · <em class="est">valeurs estimées, à vérifier</em>':''}${D.sets&&D.sets[it.id]?' · <em class="perso">réglage perso</em>':''}${D.adj&&D.adj[it.id]&&Object.values(D.adj[it.id]).some(x=>x)?' · <em class="perso">temps ajusté</em>':''}${it.w&&it.w!==1?' · huile ×'+num(it.w):''}</p></div></div>
+  <div class="sbody prep"><div class="pl1"><div class="phead" style="--c:${it.c}"><div class="ico${it.img?' ph':''}">${pic(it,40)}</div><div><h1>${esc(it.name)}</h1><p class="sub">${TAGS[it.tag]} · capacité max ${gfmt(maxOf(it))}${it.est?' · <em class="est">valeurs estimées, à vérifier</em>':''}${D.sets&&D.sets[it.id]?' · <em class="perso">réglage perso</em>':''}${D.adj&&D.adj[it.id]&&Object.values(D.adj[it.id]).some(x=>x)?' · <em class="perso">temps ajusté</em>':''}${it.w&&it.w!==1?' · huile ×'+num(it.w):''}</p></div></div>
    <div class="grp qty"><div class="stepr"><button class="rbtn" data-act="qm" aria-label="Moins 50 grammes">${ui('minus',20)}</button><div><div class="big" id="qv"></div></div><button class="rbtn" data-act="qp" aria-label="Plus 50 grammes">${ui('plus',20)}</button></div>
     <input type="range" id="qr" min="50" max="1500" step="50" aria-label="Quantité en grammes">
     <div class="pre" id="qc"></div>
     <div class="lr" style="padding:12px 0 0;margin-top:12px;border-top:.5px solid var(--sep)"><div><span>Pour</span><small id="pps"></small></div><div class="stp"><button data-act="ppm" aria-label="Une personne de moins">${ui('minus',18)}</button><span id="ppn"></span><button data-act="ppp" aria-label="Une personne de plus">${ui('plus',18)}</button></div></div></div>
-   <div id="dyn"></div>
+   </div><div id="dyn"></div><div class="pl2">
    ${it.note?`<p class="tip"><b>Astuce</b> · ${esc(it.note)}</p>`:''}
    <div class="grp" style="margin-top:16px"><button class="lr act" data-act="savedef">Enregistrer comme réglage par défaut</button>${D.sets&&D.sets[it.id]?`<button class="lr act red" data-act="clrdef">Rétablir les valeurs recommandées</button>`:''}${it.custom?`<button class="lr act" data-act="editdish">Modifier ce plat</button>`:''}<button class="lr act" data-act="sharedish">Partager ce plat</button></div>
-   <h3 class="sh2">Ma note</h3><div class="grp pad"><textarea class="ta" id="note" placeholder="Ex. : 1 min de plus pour plus de croustillant" maxlength="300" style="margin:0;min-height:84px">${esc((D.notes||{})[it.id]||'')}</textarea></div>
+   <h3 class="sh2">Ma note</h3><div class="grp pad"><textarea class="ta" id="note" placeholder="Ex. : 1 min de plus pour plus de croustillant" maxlength="300" style="margin:0;min-height:84px">${esc((D.notes||{})[it.id]||'')}</textarea></div></div>
   </div><div class="sfoot" id="foot"></div>`;
 }
 function prepDyn(){
@@ -1189,7 +1239,7 @@ function deleteDish(){
   renderMain();toast('Plat supprimé.');
 }
 /* ---------- Réglages : préférences, historique, sauvegarde ---------- */
-const VER='17';
+const VER='18';
 const THEMES=[['auto','Auto','linear-gradient(90deg,#F2F2F7 50%,#000 50%)','#8a8a90','#c9c9d0'],['light','Clair','#F2F2F7','#2a2a30','#FFFFFF'],['sand','Sable','#F6F1E7','#4a3d28','#FFFDF8'],['graphite','Graphite','#16181D','#c8cdd8','#2B2F37'],['dark','Sombre','#000000','#cfcfd4','#1C1C1E']];
 const ACCENTS=[['green','Émeraude','#30D158'],['blue','Océan','#4DA3FF'],['purple','Violet','#BF5AF2'],['pink','Rose','#FF4F7B'],['teal','Turquoise','#40C8E0']];
 function logCook(){
