@@ -378,6 +378,8 @@ img,svg{-webkit-user-drag:none;user-drag:none}
 .bars i{display:block;width:100%;border-radius:6px;background:var(--gr);opacity:.9}
 .bars b{font-size:12px;color:var(--mu);font-weight:600;height:16px;line-height:16px}
 .bl{display:flex;justify-content:space-between;color:var(--mu);font-size:12px;margin:2px 0 8px}
+.kitb svg{fill:none;stroke:var(--tx);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.kitb.on{background:var(--gr)}.kitb.on svg{stroke:var(--ongr)}
 </style>
 </head>
 <body>
@@ -400,7 +402,7 @@ img,svg{-webkit-user-drag:none;user-drag:none}
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={g(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},s(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
-let PF=Object.assign({sound:true,vol:.6,vib:true,wake:true,bg:true,ts:'auto'},LS.g('ole_prefs',{}));
+let PF=Object.assign({sound:true,vol:.6,vib:true,wake:true,bg:true,ts:'auto',voice:false,kit:false,scn:'Minuteur Friteuse'},LS.g('ole_prefs',{}));
 const savePF=()=>LS.s('ole_prefs',PF);
 const num=n=>String(n).replace('.',',');
 const p2=n=>String(n).padStart(2,'0');
@@ -428,6 +430,7 @@ clock:'<circle cx="24" cy="26" r="16" fill="#58A6F2"/><path d="M24 10a16 16 0 01
 const svg=(k,s=48)=>`<svg viewBox="0 0 48 48" width="${s}" height="${s}" aria-hidden="true">${IC[k]}</svg>`;
 const pic=(it,n)=>it.img?`<img class="pic" src="${it.img}" alt="" draggable="false">`:svg(it.icon,n);
 const U={
+kit:'<path d="M3 19L8.500 5l5.500 14M5 14h7M15.500 19l3-8 3 8M16.500 16.500h4"/>',
 search:'<path fill-rule="evenodd" d="M10.500 3a7.500 7.500 0 015.900 12.100l4.300 4.300-2.100 2.100-4.300-4.300A7.500 7.500 0 1110.500 3zm0 3a4.500 4.500 0 100 9 4.500 4.500 0 000-9z"/>',
 star:'<path d="M12 3.500l2.600 5.300 5.800.8-4.200 4.100 1 5.800L12 16.800l-5.200 2.700 1-5.800L3.600 9.600l5.800-.8z"/>',
 gear:'<path fill-rule="evenodd" d="M12 2.500l1.600.3.5 2.200 1.700.7 1.900-1.200 2.200 2.200-1.200 1.900.7 1.700 2.200.5.3 1.600-.3 1.600-2.200.5-.7 1.700 1.200 1.900-2.200 2.200-1.900-1.200-1.700.7-.5 2.200L12 21.500l-1.600-.3-.5-2.200-1.700-.7-1.900 1.200-2.200-2.200 1.200-1.900-.7-1.700-2.200-.5L2.500 12l.3-1.600 2.200-.5.7-1.700-1.200-1.900 2.200-2.200 1.900 1.200 1.700-.7.5-2.200zM12 8.500a3.500 3.500 0 110 7 3.500 3.500 0 010-7z"/>',
@@ -559,7 +562,7 @@ D.oil=Object.assign({count:0,limit:10,lastChange:null,lastFilter:null,delay:3},D
 if(D.oil.score==null)D.oil.score=D.oil.count||0;
 if(D.oil.since==null)D.oil.since=D.oil.lastChange||null;
 if(!D.oil.days)D.oil.days=30;
-D.heat=D.heat||{};
+D.heat=D.heat||{};D.adj=D.adj||{};
 D.hist=D.hist||[];D.fav=D.fav||[];D.sets=D.sets||{};D.notes=D.notes||{};D.custom=D.custom||[];
 const save=()=>LS.s('ole_state',D);
 let T=LS.g('ole_timer',null);
@@ -594,7 +597,8 @@ function applyDT(){
   let k=1;
   try{if(CSS.supports('font','-apple-system-body')){const p=document.createElement('span');p.style.cssText='font:-apple-system-body;position:absolute;visibility:hidden';p.textContent='A';document.body.appendChild(p);k=parseFloat(getComputedStyle(p).fontSize)/17;p.remove()}}catch(e){}
   if(PF.ts&&PF.ts!=='auto')k=+PF.ts;
-  k=Math.max(.92,Math.min(1.22,k||1));
+  if(PF.kit)k=k*1.18;
+  k=Math.max(.92,Math.min(PF.kit?1.4:1.22,k||1));
   document.documentElement.style.setProperty('--dt',k.toFixed(3));
 }
 /* ---------- Thème ---------- */
@@ -654,21 +658,27 @@ function toast(msg,label,fn){
 /* ---------- Minuteur de cuisson ---------- */
 function remaining(){if(!T)return 0;if(T.paused||T.phase!=='run')return T.rem;return Math.max(0,(T.end-Date.now())/1000)}
 function beginStage(){const st=T.stages[T.i];T.total=st.sec;T.rem=st.sec;T.end=Date.now()+st.sec*1000;T.paused=false;T.phase='run'}
+function say(m){
+  if(!PF.voice||!('speechSynthesis' in window))return;
+  try{const u=new SpeechSynthesisUtterance(m);u.lang='fr-FR';u.volume=Math.max(.3,PF.vol);const v=speechSynthesis.getVoices().find(x=>/^fr/i.test(x.lang));if(v)u.voice=v;speechSynthesis.cancel();speechSynthesis.speak(u)}catch(e){}
+}
+const sayDur=sec=>{const m=Math.floor(sec/60),r=sec%60;return (m?m+' minute'+(m>1?'s':''):'')+(m&&r?' ':'')+(r?r+' secondes':'')};
 function startT(o){
   unlock();alarmOff();
   T=Object.assign({i:0,counted:false},o);
   if(T.stages[0].temp){T.total=T.stages[0].sec;T.rem=T.total;T.phase='heat';T.heatStart=Date.now()}else beginStage();
   saveT();wake();askNotif();
+  if(T.phase==='heat')say('Chauffe en cours. Réglez le thermostat sur '+T.stages[0].temp+' degrés.');
   S.sheet='cook';renderSheet();renderMain();renderNav();
 }
 function stageEnd(){
   announce(T.i>=T.stages.length-1?'Cuisson terminée':T.stages[T.i].l+' terminé');
   const last=T.i>=T.stages.length-1,cur=T.stages[T.i];
   T.rem=0;
-  if(last){T.phase='done';logCook();saveT();alarmOn();unwake();notify('Cuisson terminée',T.name+' est prêt.','cook')}
+  if(last){T.phase='done';logCook();saveT();alarmOn();unwake();notify('Cuisson terminée',T.name+' est prêt.','cook');say('Cuisson terminée. Sortez le panier.')}
   else{
     const nx=T.stages[T.i+1];T.i++;T.phase='heat';T.heatStart=Date.now();saveT();ding();vib();
-    notify(cur.l+' terminé','Réglez le thermostat sur '+nx.temp+' °C pour '+nx.l+'.','cook');
+    notify(cur.l+' terminé','Réglez le thermostat sur '+nx.temp+' °C pour '+nx.l+'.','cook');say(cur.l+' terminé. Réglez le thermostat sur '+nx.temp+' degrés pour '+nx.l+'.');
   }
   S.sheet='cook';renderSheet();renderMain();renderMini();
 }
@@ -678,6 +688,7 @@ function tickT(){
     const ht=heatTyp(T.i,T.batch||1,T.stages[T.i].temp),et=document.querySelector('.eta');if(et)et.textContent=ht?(e<ht?'Prêt dans ≈ '+fmtMin(Math.max(15,ht-e)):'Le voyant devrait bientôt s’éteindre'):'';return}
   const r=remaining();
   if(T.phase==='run'&&!T.paused&&r<=0){stageEnd();return}
+  if(T.phase==='run'&&!T.paused&&T.stages[T.i].temp&&r<=60&&r>55&&T.total>75&&T.s60!==T.i+'/'+(T.batch||1)){T.s60=T.i+'/'+(T.batch||1);saveT();say('Plus qu’une minute.')}
   document.querySelectorAll('.t-rem').forEach(e=>e.textContent=fmt(r));
   const rp=$('#ringp');if(rp&&T.total&&T.phase==='run')rp.style.strokeDashoffset=(+rp.dataset.c||C1)*(1-r/T.total);
 }
@@ -871,12 +882,13 @@ function openItem(id,ov){
   S.pi=0;S.P={it,qty:q,temps:it.stages.map(s=>Math.round((s.t[0]+s.t[1])/2/5)*5),secs:it.stages.map(s=>est(s,q,mx))};
   const sv=ov||(D.sets||{})[id];
   if(sv&&sv.temps&&sv.temps.length===it.stages.length){S.P.qty=sv.qty||S.P.qty;S.P.temps=sv.temps.slice();S.P.secs=sv.secs.slice()}
+  else{const ad=(D.adj||{})[id];if(ad)S.P.secs=S.P.secs.map((x,k)=>Math.max(15,x+(ad[k]||0)))}
   S.sheet='prep';renderSheet();
 }
 function prepSheet(){
   const {it}=S.P;
   return `<div class="sbar"><button class="ib" data-act="back" aria-label="Retour">${ui('back',20)}</button><div class="st">Cuisson</div><button class="ib fvb ${(D.fav||[]).includes(it.id)?'on':''}" data-act="fav" data-v="${it.id}" aria-label="Favori">${ui('star',20)}</button></div>
-  <div class="sbody"><div class="phead" style="--c:${it.c}"><div class="ico${it.img?' ph':''}">${pic(it,40)}</div><div><h1>${esc(it.name)}</h1><p class="sub">${TAGS[it.tag]} · capacité max ${gfmt(maxOf(it))}${it.est?' · <em class="est">valeurs estimées, à vérifier</em>':''}${D.sets&&D.sets[it.id]?' · <em class="perso">réglage perso</em>':''}${it.w&&it.w!==1?' · huile ×'+num(it.w):''}</p></div></div>
+  <div class="sbody"><div class="phead" style="--c:${it.c}"><div class="ico${it.img?' ph':''}">${pic(it,40)}</div><div><h1>${esc(it.name)}</h1><p class="sub">${TAGS[it.tag]} · capacité max ${gfmt(maxOf(it))}${it.est?' · <em class="est">valeurs estimées, à vérifier</em>':''}${D.sets&&D.sets[it.id]?' · <em class="perso">réglage perso</em>':''}${D.adj&&D.adj[it.id]&&Object.values(D.adj[it.id]).some(x=>x)?' · <em class="perso">temps ajusté</em>':''}${it.w&&it.w!==1?' · huile ×'+num(it.w):''}</p></div></div>
    <div class="grp qty"><div class="stepr"><button class="rbtn" data-act="qm" aria-label="Moins 50 grammes">${ui('minus',20)}</button><div><div class="big" id="qv"></div></div><button class="rbtn" data-act="qp" aria-label="Plus 50 grammes">${ui('plus',20)}</button></div>
     <input type="range" id="qr" min="50" max="1500" step="50" aria-label="Quantité en grammes">
     <div class="pre" id="qc"></div>
@@ -1039,11 +1051,11 @@ function cookSheet(){
       foot=`<div class="frow"><button class="go" id="readyb" data-act="ready" style="font-size:15px">Huile prête : lancer ${fmt(st.sec)}</button><button class="ib2" data-act="stop" aria-label="Arrêter">${ui('stop',20)}</button></div>`;
     }else if(ph==='run'){
       body=`<div class="dial big">${knob(tp,false,false,{frac:r/T.total,center:ctr(T.paused?'En pause':lab,fmt(r),'t-rem',tp+' °C')})}</div>
-       <div class="grp" style="margin-top:16px"><div class="lr"><span>Fin prévue</span><b>${T.paused?'En pause':new Date(T.end).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</b></div>${T.paused?'':`<button class="lr act" data-act="alarm">Ajouter une alarme à l’agenda</button>`}${multi?`<div class="lr"><span>Étape</span><b>${st.l} · ${T.i+1} sur ${n}</b></div>`:''}${T.qty?`<div class="lr"><span>Quantité</span><b>${gfmt(T.qty)}</b></div>`:''}</div>`;
+       <div class="grp" style="margin-top:16px"><div class="lr"><span>Fin prévue</span><b>${T.paused?'En pause':new Date(T.end).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</b></div>${T.paused?'':`<button class="lr act" data-act="alarm">Ajouter une alarme à l’agenda</button><button class="lr act" data-act="clock">Minuteur Horloge (Raccourcis)</button>`}${multi?`<div class="lr"><span>Étape</span><b>${st.l} · ${T.i+1} sur ${n}</b></div>`:''}${T.qty?`<div class="lr"><span>Quantité</span><b>${gfmt(T.qty)}</b></div>`:''}</div>`;
       foot=pauseRow;
     }else{
       body=`<div class="dial big">${knob(tp,false,false,{frac:1,col:'#FF9F4A',center:ctr('Cuisson','Prêt !','',null,17)})}</div>
-       ${T.kind==='cook'?`<p class="sub" style="text-align:center;margin:8px 0 0">Comptez cette cuisson pour suivre l’usure de l’huile.</p>`:''}`;
+       ${T.kind==='cook'?(T.fb==null?`<div class="lbl" style="text-align:center;margin:12px 0 8px">Cuisson réussie ?</div><div class="seg" style="margin:0"><button data-act="fbk" data-v="1">Pas assez</button><button data-act="fbk" data-v="0">Parfait</button><button data-act="fbk" data-v="-1">Trop cuit</button></div>`:`<p class="sub" style="text-align:center;margin:12px 0 0">Merci, c’est noté${T.fb?' : le temps conseillé sera ajusté de '+(T.fb>0?'+':'−')+'15 s.':'.'}</p>`):''}`;
       foot=T.kind==='cook'?`<button class="go" data-act="again">${ui('reset',20)}Nouvelle fournée</button><div class="row"><button class="sec" data-act="dcount">${ui('drop',18)}Compter + filtrage</button><button class="sec" data-act="stop">Terminer</button></div>`:`<button class="go" data-act="stop">Terminer</button>`;
     }
   }else{
@@ -1052,7 +1064,7 @@ function cookSheet(){
      <div class="ring ${dn?'dn':''}"><svg viewBox="0 0 260 260"><circle class="tr" cx="130" cy="130" r="118"/><circle class="pg" id="ringp" cx="130" cy="130" r="118" stroke-dasharray="${C1}" style="stroke-dashoffset:${off}"/></svg><div class="rc">${dn?'<div class="big" style="font-size:40px">C’est prêt</div>':`<div class="big t-rem">${fmt(r)}</div><div class="sm">${T.paused?'En pause':'restantes'}</div>`}</div></div>`;
     foot=dn?`<button class="go" data-act="stop">Terminer</button>`:pauseRow;
   }
-  return `<div class="sbar"><button class="ib" data-act="back" aria-label="Réduire">${ui('back',20)}</button><div class="st">${esc(T.name)}${T.batch>1?' · fournée '+T.batch:''}</div><span style="width:40px"></span></div>
+  return `<div class="sbar"><button class="ib" data-act="back" aria-label="Réduire">${ui('back',20)}</button><div class="st">${esc(T.name)}${T.batch>1?' · fournée '+T.batch:''}</div><button class="ib kitb ${PF.kit?'on':''}" data-act="kitq" aria-label="Mode cuisine">${ui('kit',20)}</button></div>
   <div class="sbody">${body}</div><div class="sfoot">${foot}</div>`;
 }
 let lastSheet=null;
@@ -1177,7 +1189,7 @@ function deleteDish(){
   renderMain();toast('Plat supprimé.');
 }
 /* ---------- Réglages : préférences, historique, sauvegarde ---------- */
-const VER='16';
+const VER='17';
 const THEMES=[['auto','Auto','linear-gradient(90deg,#F2F2F7 50%,#000 50%)','#8a8a90','#c9c9d0'],['light','Clair','#F2F2F7','#2a2a30','#FFFFFF'],['sand','Sable','#F6F1E7','#4a3d28','#FFFDF8'],['graphite','Graphite','#16181D','#c8cdd8','#2B2F37'],['dark','Sombre','#000000','#cfcfd4','#1C1C1E']];
 const ACCENTS=[['green','Émeraude','#30D158'],['blue','Océan','#4DA3FF'],['purple','Violet','#BF5AF2'],['pink','Rose','#FF4F7B'],['teal','Turquoise','#40C8E0']];
 function logCook(){
@@ -1204,10 +1216,14 @@ function viewSettings(){
     <div class="seg" style="margin:0">${[['auto','Auto'],['0.92','Petit'],['1','Normal'],['1.12','Grand']].map(([v,l])=>`<button class="${String(PF.ts)===v?'on':''}" data-act="setTs" data-v="${v}">${l}</button>`).join('')}</div></div>
    <div class="grp" style="margin-top:12px">${sw('bg','Fond animé','Halos de couleur derrière l’interface')}</div>
    <h3 class="sh2">Cuisson</h3>
-   <div class="grp">${sw('wake','Écran allumé','Pendant une cuisson')}${sw('sound','Son de fin','Un « ding » à la fin du minuteur')}
+   <div class="grp">${sw('wake','Écran allumé','Pendant une cuisson')}${sw('kit','Mode cuisine','Texte agrandi pour lire de loin')}${sw('voice','Annonces vocales','Étapes et fin de cuisson (app ouverte)')}${PF.voice?`<button class="lr act" data-act="testvoice">Tester les annonces</button>`:''}${sw('sound','Son de fin','Un « ding » à la fin du minuteur')}
     ${PF.sound?`<div class="lr"><span>Volume</span><input type="range" id="vol" min="0" max="100" value="${Math.round(PF.vol*100)}" style="--p:${Math.round(PF.vol*100)}%;width:150px;margin:0"></div><button class="lr act" data-act="testsnd">Tester le son</button>`:''}
     ${sw('vib','Retour tactile','Cadran et alertes, selon l’appareil')}${PF.vib?`<button class="lr act" data-act="testhap">Tester le retour tactile</button>`:''}
     <div class="lr"><span>Notifications</span>${notif}</div></div>
+   <h3 class="sh2">Minuteur Horloge (Raccourcis)</h3>
+   <div class="grp pad"><p class="sub" style="margin:0 0 12px">Pour une sonnerie fiable même iPhone verrouillé, créez un raccourci qui démarre un minuteur de l’app Horloge.</p><input class="inp" id="scn" maxlength="40" placeholder="Nom du raccourci" value="${esc(PF.scn||'Minuteur Friteuse')}">
+    <div class="tips" style="margin-top:14px"><p>Ouvrez l’app Raccourcis, touchez « + » et ajoutez l’action « Démarrer le minuteur ».</p><p>Réglez la durée sur « Entrée du raccourci », en secondes.</p><p>Donnez au raccourci exactement le nom ci-dessus.</p></div></div>
+   <div class="grp" style="margin-top:10px"><button class="lr act" data-act="testsc">Tester avec 30 secondes</button></div>
    <h3 class="sh2">Huile</h3>
    <div class="grp"><div class="lr"><span>Remplacer après</span><div class="stp"><button data-act="lm" aria-label="Moins">${ui('minus',18)}</button><span>${o.limit}</span><button data-act="lp" aria-label="Plus">${ui('plus',18)}</button></div></div>
     <div class="lr"><span>Alerte d’âge</span><div class="stp"><button data-act="dm" aria-label="Moins de jours">${ui('minus',18)}</button><span>${o.days} j</span><button data-act="dp" aria-label="Plus de jours">${ui('plus',18)}</button></div></div>
@@ -1263,6 +1279,11 @@ let ONS=null;
 document.addEventListener('pointerdown',e=>{if(!$('#onb').hidden)ONS={x:e.clientX,id:e.pointerId}});
 document.addEventListener('pointerup',e=>{if(!ONS||e.pointerId!==ONS.id)return;const dx=e.clientX-ONS.x;ONS=null;if($('#onb').hidden)return;if(dx<-60)showOnb(S.onb+1);else if(dx>60)showOnb(S.onb-1)});
 
+/* ---------- Minuteur Horloge via Raccourcis ---------- */
+function runShortcut(sec){
+  const u='shortcuts://run-shortcut?name='+encodeURIComponent(PF.scn||'Minuteur Friteuse')+'&input=text&text='+Math.max(1,sec);
+  try{window.location.href=u}catch(e){toast('Impossible d’ouvrir Raccourcis.')}
+}
 /* ---------- Compatibilité et mises à jour ---------- */
 function diag(){
   const sup=(p,v)=>{try{return CSS.supports(p,v)}catch(e){return false}};
@@ -1299,6 +1320,10 @@ document.addEventListener('click',e=>{
   case 'setTheme':theme=v;LS.s('ole_theme',theme);applyTheme();renderMain();break;
   case 'setGlass':glass=v;LS.s('ole_glass',glass);applyDisplay();renderMain();break;
   case 'install':doInstall();break;
+  case 'fbk':{if(T&&T.fb==null){const n=+v;T.fb=n;saveT();const it=findItem(T.itemId);
+    if(it&&n){const k=T.stages.length-1;D.adj=D.adj||{};const a=D.adj[it.id]=D.adj[it.id]||{};a[k]=Math.max(-120,Math.min(120,(a[k]||0)+n*15))}
+    if(D.hist&&D.hist[0]&&D.hist[0].id===T.itemId)D.hist[0].v=n;
+    save();haptic();renderSheet()}}break;
   case 'setTs':PF.ts=v;savePF();applyDT();renderMain();break;
   case 'testhap':unlock();haptic();setTimeout(haptic,200);setTimeout(haptic,400);toast('Trois impulsions envoyées.');break;
   case 'sharedish':shareDish(P.it);break;
@@ -1315,7 +1340,7 @@ document.addEventListener('click',e=>{
   case 'sort':S.sort=S.sort==='cat'?'az':S.sort==='az'?'recent':'cat';renderMain();break;
   case 'fav':{D.fav=D.fav||[];const i=D.fav.indexOf(v);if(i>=0)D.fav.splice(i,1);else D.fav.push(v);save();if(S.sheet==='prep')renderSheet();else renderMain()}break;
   case 'savedef':{D.sets=D.sets||{};D.sets[P.it.id]={qty:P.qty,temps:P.temps.slice(),secs:P.secs.slice()};save();toast('Réglage enregistré.');renderSheet()}break;
-  case 'clrdef':{const id=P.it.id;delete D.sets[id];save();openItem(id);toast('Valeurs recommandées rétablies.')}break;
+  case 'clrdef':{const id=P.it.id;delete D.sets[id];if(D.adj)delete D.adj[id];save();openItem(id);toast('Valeurs recommandées rétablies.')}break;
   case 'newdish':showDishForm();break;
   case 'editdish':showDishForm(P.it.id);break;
   case 'dfTag':S.df.tag=v;renderDishForm();break;
@@ -1328,7 +1353,11 @@ document.addEventListener('click',e=>{
   case 'dfsave':saveDish();break;
   case 'dfdel':if(S.dfConfirm)deleteDish();else{S.dfConfirm=true;renderDishForm()}break;
   case 'setAccent':accent=v;LS.s('ole_accent',accent);applyTheme();renderMain();break;
-  case 'tgl':PF[v]=!PF[v];savePF();applyDisplay();if(v==='sound'&&PF.sound)unlock();renderMain();break;
+  case 'tgl':PF[v]=!PF[v];if(v==='kit'&&PF.kit)PF.wake=true;savePF();applyDisplay();if(v==='kit')applyDT();if(v==='sound'&&PF.sound)unlock();if(v==='voice'&&PF.voice)say('Annonces vocales activées.');renderMain();break;
+  case 'kitq':PF.kit=!PF.kit;if(PF.kit)PF.wake=true;savePF();applyDT();renderSheet();break;
+  case 'clock':runShortcut(Math.round(remaining()));break;
+  case 'testsc':runShortcut(30);break;
+  case 'testvoice':say('Les annonces vocales fonctionnent.');break;
   case 'testsnd':unlock();ding();break;
   case 'notif':try{Notification.requestPermission().then(()=>renderMain())}catch(e){}break;
   case 'clrhist':D.hist=[];save();renderMain();break;
@@ -1355,7 +1384,7 @@ document.addEventListener('click',e=>{
   case 'start':
     if(P.qty>maxOf(P.it))break;
     startT({kind:'cook',batch:1,w:P.it.w||1,frac:Math.min(1,P.qty/maxOf(P.it)),itemId:P.it.id,name:P.it.name,tag:TAGS[P.it.tag],icon:P.it.icon,qty:P.qty,stages:P.it.stages.map((s,k)=>({l:s.l,temp:P.temps[k],sec:P.secs[k]}))});break;
-  case 'ready':unlock();alarmOff();haptic();announce('Cuisson lancée');
+  case 'ready':unlock();alarmOff();haptic();announce('Cuisson lancée');say('Cuisson lancée, '+sayDur(T.stages[T.i].sec));
     if(T.phase==='heat'){const d=Math.round((Date.now()-T.heatStart)/1000);if(d>=20&&d<=1800){const k=hk(T.i,T.batch||1,T.stages[T.i].temp);D.heat=D.heat||{};(D.heat[k]=D.heat[k]||[]).push(d);D.heat[k]=D.heat[k].slice(-8);save()}}
     beginStage();saveT();wake();renderSheet();break;
   case 'pause':T.rem=remaining();T.paused=true;saveT();unwake();renderSheet();break;
@@ -1388,6 +1417,7 @@ document.addEventListener('click',e=>{
   }
 });
 document.addEventListener('input',e=>{
+  if(e.target.id==='scn'){PF.scn=e.target.value.slice(0,40);savePF();return}
   if(e.target.id==='gq'){S.q=e.target.value;$('#glist').innerHTML=guideHTML();return}
   if(e.target.id==='df-name'&&S.df){S.df.name=e.target.value;return}
   if(e.target.id==='df-note'&&S.df){S.df.note=e.target.value;return}
