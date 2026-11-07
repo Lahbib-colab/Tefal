@@ -896,23 +896,27 @@ function toast(msg,label,fn){
 function remaining(){if(!T)return 0;if(T.paused||T.phase!=='run')return T.rem;return Math.max(0,(T.end-Date.now())/1000)}
 function beginStage(){const st=T.stages[T.i];T.total=st.sec;T.rem=st.sec;T.end=Date.now()+st.sec*1000;T.paused=false;T.phase='run'}
 /* ---------- Synthèse vocale : voix naturelle ---------- */
-const NOVELTY=/\b(eddy|flo|grandma|grandpa|reed|rocko|sandy|shelley|jester|bahh|bells|boing|bubbles|cellos|wobble|zarvox|albert|fred|junior|kathy|organ|superstar|trinoids|whisper|good news|bad news|bruce|ralph|agnes|princess|victoria)\b/i;
+const NOVELTY=/\b(jester|bahh|bells|boing|bubbles|cellos|wobble|zarvox|albert|fred|junior|kathy|organ|superstar|trinoids|whisper|good news|bad news|bruce|ralph|agnes|princess|victoria)\b/i;
 let VOICES=[],VPRIME=false,SAYQ=0;
-function loadVoices(){try{VOICES=speechSynthesis.getVoices().filter(v=>/^fr([-_]|$)/i.test(v.lang)&&!NOVELTY.test(v.name)).sort((a,b)=>vScore(b)-vScore(a))}catch(e){VOICES=[]}return VOICES}
+function loadVoices(){try{const seen=new Set();VOICES=speechSynthesis.getVoices().filter(v=>/^fr([-_]|$)/i.test(v.lang)&&!NOVELTY.test(v.name)).filter(v=>{const k=vId(v);if(seen.has(k))return false;seen.add(k);return true}).sort((a,b)=>vScore(b)-vScore(a))}catch(e){VOICES=[]}return VOICES}
 function vScore(v){
   const n=(v.name||'')+' '+(v.voiceURI||''),l=(v.lang||'').replace('_','-');let s=0;
   if(/premium|haute qualit|high quality/i.test(n))s+=60;
   if(/natural|neural|online/i.test(n))s+=52;
-  if(/siri/i.test(n))s+=50;
+  if(/siri/i.test(n)&&!/compact/i.test(n))s+=50;
   if(/enhanced|am[ée]lior|[ée]tendu/i.test(n))s+=44;
   if(/google/i.test(n))s+=24;
   if(/compact/i.test(n))s-=20;
+  if(/\baudrey\b/i.test(v.name||''))s+=9;else if(/\baur[ée]lie\b/i.test(v.name||''))s+=7;
+  if(/^(eddy|flo|grandma|grandpa|reed|rocko|sandy|shelley)\b/i.test(v.name||''))s-=6;
   if(/^fr-FR$/i.test(l))s+=12;else if(/^fr-(CA|BE|CH)/i.test(l))s+=3;
   if(v.localService)s+=4;
   return s;
 }
-const vQual=v=>{const n=(v.name||'')+' '+(v.voiceURI||'');return /premium|siri|natural|neural/i.test(n)?'Premium':/enhanced|am[ée]lior|[ée]tendu|online|google/i.test(n)?'Améliorée':'Standard'};
-function bestVoice(){if(!VOICES.length)loadVoices();if(PF.vname){const v=VOICES.find(x=>x.name===PF.vname);if(v)return v}return VOICES[0]||null}
+const vId=v=>v.voiceURI||((v.name||'')+'|'+(v.lang||''));
+const vTag=v=>{const u=v.voiceURI||'';const m=u.match(/(super-compact|compact|enhanced|premium|siri[\w-]*|eloquence)/i);return m?m[1].toLowerCase():(u&&u!==v.name?u.split('.').slice(-2).join('.'):'')};
+const vQual=v=>{const n=(v.name||'')+' '+(v.voiceURI||'');if(/compact/i.test(n))return 'Standard';return /premium|siri|natural|neural/i.test(n)?'Premium':/enhanced|am[ée]lior|[ée]tendu|online|google/i.test(n)?'Améliorée':'Standard'};
+function bestVoice(){if(!VOICES.length)loadVoices();if(PF.vname){const v=VOICES.find(x=>vId(x)===PF.vname)||VOICES.find(x=>x.name===PF.vname);if(v)return v}return VOICES[0]||null}
 /* texte → français parlé : unités, symboles, pauses naturelles */
 function frSpeech(t){
   return String(t).replace(/\s*°\s*C\b/g,' degrés').replace(/≈/g,'environ ').replace(/\s*[·•—–]\s*/g,', ').replace(/\s*\/\s*/g,' sur ').replace(/\b1 min\b/g,'une minute').replace(/(\d+)\s*min\b/g,'$1 minutes').replace(/(\d+)\s*s\b/g,'$1 secondes').replace(/(\d),(\d)/g,'$1 virgule $2').replace(/\s{2,}/g,' ').trim();
@@ -938,11 +942,13 @@ function voiceRows(){
   if(!PF.voice)return '';
   if(!VOICES.length)loadVoices();
   const cur=bestVoice();
-  const opts=`<option value="">Automatique${VOICES[0]?' (meilleure : '+esc(VOICES[0].name)+')':''}</option>`+VOICES.map(v=>`<option value="${esc(v.name)}" ${PF.vname===v.name?'selected':''}>${esc(v.name)} · ${vQual(v)}</option>`).join('');
+  const opts=`<option value="">Automatique${VOICES[0]?' (meilleure : '+esc(VOICES[0].name)+')':''}</option>`+VOICES.map(v=>`<option value="${esc(vId(v))}" ${cur&&vId(cur)===vId(v)&&PF.vname?'selected':''}>${esc(v.name)} (${esc(v.lang)}) · ${vQual(v)}${vTag(v)?' · '+esc(vTag(v)):''}</option>`).join('');
   const rate=[[.9,'Posé'],[1,'Normal'],[1.12,'Vif']].map(([r,l])=>`<button class="${(PF.vrate||1)===r?'on':''}" data-act="vrate" data-v="${r}">${l}</button>`).join('');
-  const short=cur?'Qualité : '+vQual(cur):'Aucune voix française trouvée';
-  const tip=!cur?'Aucune voix française n’est installée sur cet appareil.':vQual(cur)==='Standard'?'Pour une voix plus naturelle sur iPhone : Réglages › Accessibilité › Contenu énoncé › Voix › Français, puis téléchargez une voix « Améliorée » ou « Premium » (Amélie, Thomas…). Elle apparaîtra ici.':'';
-  return `<div class="lr"><div><span>Voix</span><small id="vhint">${short}</small></div><select class="vsel" id="vsel" aria-label="Voix">${opts}</select></div><div class="lr"><span>Débit</span><div class="seg vseg">${rate}</div></div>${tip?`<div class="vtip">${tip}</div>`:''}<button class="lr act" data-act="testvoice">Écouter un exemple</button>`;
+  const short=cur?'Utilisée : '+esc(cur.name)+' ('+esc(cur.lang)+') · '+vQual(cur)+(vTag(cur)?' · '+esc(vTag(cur)):''):'Aucune voix française trouvée';
+  let nAll=0;try{nAll=speechSynthesis.getVoices().length}catch(e){}
+  const cnt='L’appareil propose '+VOICES.length+' voix française'+(VOICES.length>1?'s':'')+' à l’app ('+nAll+' voix au total).'+(VOICES.some(v=>/audrey/i.test(v.name))?'':' Audrey n’est pas proposée à l’app par cet appareil pour l’instant.');
+  const tip=!cur?'Aucune voix française n’est exposée à l’app par cet appareil. '+cnt:vQual(cur)==='Standard'?cnt+' Aucune n’est « Améliorée » ou « Premium » : sur iPhone, Safari n’expose pas toujours à une page web les voix téléchargées dans Réglages › Accessibilité › Contenu énoncé › Voix. Si vous en téléchargez une, fermez complètement l’app puis rouvrez-la ; si elle n’apparaît pas, c’est une limite d’iOS que l’app ne peut pas contourner.':cnt;
+  return `<div class="lr"><div><span>Voix</span><small id="vhint">${short}</small></div><select class="vsel" id="vsel" aria-label="Voix">${opts}</select></div><div class="lr"><span>Débit</span><div class="seg vseg">${rate}</div></div><div class="vtip">${tip}</div><button class="lr act" data-act="testvoice">Écouter un exemple</button>`;
 }
 function startT(o){
   unlock();alarmOff();
@@ -1567,7 +1573,7 @@ function deleteDish(){
   renderMain();toast('Plat supprimé.');
 }
 /* ---------- Réglages : préférences, historique, sauvegarde ---------- */
-const VER='33';
+const VER='37';
 const THEMES=[['auto','Auto','linear-gradient(90deg,#F2F2F7 50%,#000 50%)','#8a8a90','#c9c9d0'],['light','Clair','#F2F2F7','#2a2a30','#FFFFFF'],['sand','Sable','#F6F1E7','#4a3d28','#FFFDF8'],['graphite','Graphite','#16181D','#c8cdd8','#2B2F37'],['dark','Sombre','#000000','#cfcfd4','#1C1C1E']];
 const ACCENTS=[['green','Émeraude','#30D158'],['blue','Océan','#4DA3FF'],['purple','Violet','#BF5AF2'],['pink','Rose','#FF4F7B'],['teal','Turquoise','#40C8E0']];
 function logCook(){
@@ -1670,7 +1676,8 @@ function diag(){
 }
 function showDiag(){
   const m=$('#modal');m.hidden=false;
-  const txt='Friteuse Oleoclean v'+VER+'\n'+diag().map(([l,ok,v])=>l+' : '+(v||(ok?'oui':'non'))).join('\n')+'\n'+navigator.userAgent;
+  let vv='';try{const all=speechSynthesis.getVoices();vv='\nVoix détectées : '+all.length+' (françaises : '+loadVoices().length+')\n'+all.map(v=>v.name+' ['+v.lang+'] '+(v.voiceURI||'')+(v.localService?'':' en ligne')).join('\n')}catch(e){}
+  const txt='Friteuse Oleoclean v'+VER+'\n'+diag().map(([l,ok,v])=>l+' : '+(v||(ok?'oui':'non'))).join('\n')+vv+'\n'+navigator.userAgent;
   m.innerHTML=`<div class="mdl" role="dialog" aria-modal="true" aria-label="Diagnostic"><h2>Diagnostic</h2><p>Copiez ce texte et envoyez-le avec vos captures si quelque chose s’affiche mal.</p><textarea class="ta" id="expta" readonly>${esc(txt)}</textarea><div class="row" style="margin-top:12px"><button class="sec" data-act="expcopy">Copier</button><button class="sec" data-act="mclose">Fermer</button></div></div>`;
 }
 async function checkUpdate(){
@@ -2088,7 +2095,7 @@ window.addEventListener('resize',()=>v3Apply());
 
 
 try{if('speechSynthesis' in window){loadVoices();speechSynthesis.addEventListener('voiceschanged',()=>{loadVoices();const sel=document.getElementById('vsel');if(sel&&S.tab==='set')renderMain()})}}catch(e){}
-document.addEventListener('change',e=>{if(e.target&&e.target.id==='vsel'){PF.vname=e.target.value;savePF();const h=document.getElementById('vhint'),c=bestVoice();if(h&&c)h.textContent='Qualité : '+vQual(c);say('Bonjour, voici cette voix. Cuisson terminée, sortez le panier.',{force:true})}});
+document.addEventListener('change',e=>{if(e.target&&e.target.id==='vsel'){PF.vname=e.target.value;savePF();const h=document.getElementById('vhint'),c=bestVoice();if(h&&c)h.textContent='Utilisée : '+c.name+' ('+c.lang+') · '+vQual(c)+(vTag(c)?' · '+vTag(c):'');say('Bonjour, voici cette voix. Cuisson terminée, sortez le panier.',{force:true})}});
 /* ---------- Actions ---------- */
 document.addEventListener('click',e=>{
   if(e.target.id==='modal'){$('#modal').hidden=true;return}
